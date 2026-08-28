@@ -11,10 +11,6 @@ export class BehaviorSubject<T> extends Subject<T> {
     super();
   }
 
-  get value(): T {
-    return this.getValue();
-  }
-
   /** @internal */
   protected _subscribe(subscriber: Subscriber<T>): Subscription {
     const subscription = super._subscribe(subscriber);
@@ -35,3 +31,19 @@ export class BehaviorSubject<T> extends Subject<T> {
     super.next((this._value = value));
   }
 }
+
+/**
+ * ES3 downlevel experiment: keep the public `value` property in the type
+ * surface while expressing the accessor without TypeScript accessor syntax.
+ */
+export interface BehaviorSubject<T> {
+  readonly value: T;
+}
+
+Object.defineProperty(BehaviorSubject.prototype, 'value', {
+  configurable: true,
+  enumerable: false,
+  get: function (this: BehaviorSubject<any>) {
+    return this.getValue();
+  },
+});
