@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           node <<'NODE'
-          const rxjs = require('./dist/cjs/index.js');
+          const rxjs = require('./dist/cjs3/index.js');
           const values = [];
           rxjs.of(1, 2, 3)
             .pipe(rxjs.map(function (x) { return x * 10; }))
