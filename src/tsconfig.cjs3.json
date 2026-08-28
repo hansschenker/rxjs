@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es3",
+    "downlevelIteration": true,
+    "outDir": "../dist/cjs3"
+  },
+  "exclude": ["./internal/umd.ts"]
+}

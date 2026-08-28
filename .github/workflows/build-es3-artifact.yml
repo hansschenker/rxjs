@@ -1,0 +1,126 @@
+name: Build RxJS ES3 artifact
+
+on:
+  push:
+    branches:
+      - experiment/es3-functions
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-es3:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout RxJS 7.8.2 experiment
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Compile RxJS to ES3 CommonJS
+        run: npx --yes --package typescript@4.2.4 tsc -b src/tsconfig.cjs3.json src/tsconfig.types.json
+
+      - name: Verify downlevel syntax
+        run: node tools/verify-es3-build.js
+
+      - name: Runtime smoke test
+        shell: bash
+        run: |
+          node <<'NODE'
+          const rxjs = require('./dist/cjs/index.js');
+          const values = [];
+          rxjs.of(1, 2, 3)
+            .pipe(rxjs.map(function (x) { return x * 10; }))
+            .subscribe({
+              next: function (value) { values.push(value); },
+              error: function (error) { throw error; },
+              complete: function () {
+                if (values.join(',') !== '10,20,30') {
+                  throw new Error('Unexpected values: ' + values.join(','));
+                }
+                console.log('Runtime smoke test passed:', values.join(','));
+              }
+            });
+          NODE
+
+      - name: Assemble distributable artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT='artifact/rxjs-7.8.2-es3'
+          mkdir -p "$ROOT/dist"
+          cp -R dist/cjs3 "$ROOT/dist/cjs"
+          cp -R dist/types "$ROOT/dist/types"
+          cp LICENSE.txt "$ROOT/LICENSE.txt"
+          cp ES3_EXPERIMENT.md "$ROOT/README.md"
+          cp src/tsconfig.cjs3.json "$ROOT/tsconfig.cjs3.json"
+          cp tools/verify-es3-build.js "$ROOT/verify-es3-build.js"
+
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'artifact/rxjs-7.8.2-es3/package.json';
+          const pkg = {
+            name: 'rxjs-es3-experiment',
+            version: '7.8.2-es3.0',
+            private: true,
+            description: 'RxJS 7.8.2 downlevel-compiled to ECMAScript 3 syntax for experimentation',
+            main: './dist/cjs/index.js',
+            types: './dist/types/index.d.ts',
+            sideEffects: false,
+            license: 'Apache-2.0',
+            exports: {
+              '.': {
+                types: './dist/types/index.d.ts',
+                require: './dist/cjs/index.js',
+                default: './dist/cjs/index.js'
+              },
+              './ajax': {
+                types: './dist/types/ajax/index.d.ts',
+                require: './dist/cjs/ajax/index.js',
+                default: './dist/cjs/ajax/index.js'
+              },
+              './fetch': {
+                types: './dist/types/fetch/index.d.ts',
+                require: './dist/cjs/fetch/index.js',
+                default: './dist/cjs/fetch/index.js'
+              },
+              './operators': {
+                types: './dist/types/operators/index.d.ts',
+                require: './dist/cjs/operators/index.js',
+                default: './dist/cjs/operators/index.js'
+              },
+              './testing': {
+                types: './dist/types/testing/index.d.ts',
+                require: './dist/cjs/testing/index.js',
+                default: './dist/cjs/testing/index.js'
+              },
+              './webSocket': {
+                types: './dist/types/webSocket/index.d.ts',
+                require: './dist/cjs/webSocket/index.js',
+                default: './dist/cjs/webSocket/index.js'
+              },
+              './internal/*': {
+                types: './dist/types/internal/*.d.ts',
+                require: './dist/cjs/internal/*.js',
+                default: './dist/cjs/internal/*.js'
+              },
+              './package.json': './package.json'
+            }
+          };
+          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+
+          find "$ROOT/dist/cjs" -type f -name '*.js' | wc -l | xargs printf 'JavaScript files: %s\n' > "$ROOT/BUILD-RESULT.txt"
+          printf 'Source: RxJS 7.8.2\nCompiler: TypeScript 4.2.4\nTarget: ES3\nModule: CommonJS\nSyntax verification: PASS\nRuntime smoke test: PASS\n' >> "$ROOT/BUILD-RESULT.txt"
+
+      - name: Upload RxJS ES3 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rxjs-7.8.2-es3
+          path: artifact/rxjs-7.8.2-es3
+          if-no-files-found: error
+          retention-days: 30
