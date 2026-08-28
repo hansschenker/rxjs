@@ -102,10 +102,6 @@ export class Subject<T> extends Observable<T> implements SubscriptionLike {
     this.observers = this.currentObservers = null!;
   }
 
-  get observed() {
-    return this.observers?.length > 0;
-  }
-
   /** @internal */
   protected _trySubscribe(subscriber: Subscriber<T>): TeardownLogic {
     this._throwIfClosed();
@@ -155,6 +151,22 @@ export class Subject<T> extends Observable<T> implements SubscriptionLike {
     return observable;
   }
 }
+
+/**
+ * ES3 downlevel experiment: keep the public `observed` property in the type
+ * surface while expressing the accessor without TypeScript accessor syntax.
+ */
+export interface Subject<T> {
+  readonly observed: boolean;
+}
+
+Object.defineProperty(Subject.prototype, 'observed', {
+  configurable: true,
+  enumerable: false,
+  get: function (this: Subject<any>) {
+    return this.observers?.length > 0;
+  },
+});
 
 export class AnonymousSubject<T> extends Subject<T> {
   constructor(
