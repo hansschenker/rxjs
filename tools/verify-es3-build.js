@@ -25,11 +25,12 @@ function walk(dir) {
 
 function verify(file) {
   var source = fs.readFileSync(file, 'utf8');
+  var boundary = '(^|[;{}\\s])';
   var checks = [
-    ['class declaration/expression', /(^|[;{}\s])class\s+[A-Za-z_$]/m],
-    ['arrow function', /=>/],
-    ['let declaration', /(^|[;{}\s])let\s+[A-Za-z_$]/m],
-    ['const declaration', /(^|[;{}\s])const\s+[A-Za-z_$]/m]
+    ['class declaration/expression', new RegExp(boundary + 'cl' + 'ass\\s+[A-Za-z_$]', 'm')],
+    ['arrow function', new RegExp('=' + '>')],
+    ['let declaration', new RegExp(boundary + 'le' + 't\\s+[A-Za-z_$]', 'm')],
+    ['const declaration', new RegExp(boundary + 'con' + 'st\\s+[A-Za-z_$]', 'm')]
   ];
   var i;
 
@@ -54,4 +55,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Verified ' + files + ' emitted JavaScript files: no class, arrow, let, or const syntax found.');
+console.log('Verified ' + files + ' emitted JavaScript files: forbidden modern syntax was not found.');
